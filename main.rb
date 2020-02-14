@@ -2,7 +2,4 @@
 
 require_relative 'blackjack'
 
-puts 'Введите имя:'
-name = gets.chomp
-
-Blackjack.new(name)
+Blackjack.new

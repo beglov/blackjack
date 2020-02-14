@@ -1,19 +1,29 @@
 # frozen_string_literal: true
 
+require_relative 'interface'
 require_relative 'player'
 require_relative 'dealer'
 require_relative 'card_deck'
 
 class Blackjack
-  def initialize(username)
-    @player = Player.new(username)
-    @dealer = Dealer.new
+  MAX_SCORE = 21
+  BET = 10
+
+  def initialize(interface = Interface)
+    @interface = interface
+    initialize_game
     game
   end
 
   private
 
-  attr_reader :player, :dealer, :card_deck
+  attr_reader :interface, :player, :dealer, :card_deck
+
+  def initialize_game
+    name = interface.ask_player_name
+    @player = Player.new(name)
+    @dealer = Dealer.new
+  end
 
   def game
     continue = true
@@ -30,45 +40,30 @@ class Blackjack
     @card_deck = CardDeck.new
     player.cards = card_deck.cards.pop(2)
     dealer.cards = card_deck.cards.pop(2)
-    puts
-    puts 'Диллер раздал по две карты'
+    interface.new_round
     make_bets
   end
 
   def make_bets
-    bet = 10
+    bet = BET
     player.bank -= bet
     dealer.bank -= bet
-    puts "Размер ставки: #{bet}"
-    puts "Размер банка #{player.name}: #{player.bank}"
-    puts "Размер банка диллера: #{dealer.bank}"
+    interface.make_bets(bet, player, dealer)
   end
 
   def main_game_loop
     loop do
-      show_summary
-
-      available_actions = [3]
-      available_actions << 1
-      available_actions << 2 if player.cards.size < 3
-
-      puts 'Твой ход'
-      action = 0
-      until available_actions.include?(action)
-        puts '1 - Пропустить'
-        puts '2 - Добавить карту' if player.cards.size < 3
-        puts '3 - Открыть карты'
-        action = gets.chomp.to_i
-      end
+      interface.show_summary(player, dealer)
+      action = interface.ask_player_decision(player)
 
       case action
       when 1
-        puts 'Вы пропустили ход'
+        interface.skip_turn
       when 2
-        puts 'Вы взяли карту'
+        interface.take_card
         add_card(player)
       when 3
-        puts 'Открываем карты...'
+        interface.open_cards
         break
       end
 
@@ -77,13 +72,12 @@ class Blackjack
   end
 
   def dealer_turn
-    puts
-    puts 'Ход диллера...'
+    interface.dealer_turn
     if dealer.score < 17 && dealer.cards.size < 3
-      puts 'Берет карту'
+      interface.dealer_take_card
       add_card(dealer)
     else
-      puts 'Пропускает ход'
+      interface.dealer_skip_turn
     end
   end
 
@@ -91,26 +85,19 @@ class Blackjack
     who.cards << card_deck.cards.pop
   end
 
-  def show_summary
-    puts
-    puts "Карты #{player.name}: #{player.cards.join(', ')}. Сумма очков: #{player.score}"
-    puts "Карты диллера: #{'* ' * dealer.cards.size}"
-    puts
-  end
-
   def results
-    puts
-    puts "Карты #{player.name}: #{player.cards.join(', ')}. Сумма очков: #{player.score}."
-    puts "Карты диллера: #{dealer.cards.join(', ')}. Сумма очков: #{dealer.score}."
+    interface.show_results_summary(player, dealer)
 
     if player.score == dealer.score
-      puts 'Ничья!!! Фишки возвращены!'
+      interface.draw
       player.bank += 10
       dealer.bank += 10
     elsif player.score > dealer.score
-      puts "Выиграл #{player.name}!!! Его банк становится #{player.bank += 20}!"
+      player.bank += 20
+      interface.player_wins(player)
     else
-      puts "Выиграл диллер!!! Его банк становится #{dealer.bank += 20}!"
+      dealer.bank += 20
+      interface.dealer_wins(dealer)
     end
   end
 end

@@ -10,8 +10,8 @@ class Person
 
   def score
     total = cards.sum(&:score)
-    total -= 10 if total > 21 && cards.any?(&:ace?)
-    total = 0 if total > 21
+    total -= 10 if total > Blackjack::MAX_SCORE && cards.any?(&:ace?)
+    total = 0 if total > Blackjack::MAX_SCORE
     total
   end
 end
